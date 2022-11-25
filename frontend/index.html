@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + Svelte + TS</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="snarkjs.min.js"></script>
+    <!-- <script>
+      let snarkjs = window.snarkjs;
+    </script> -->
+    <script type="module" src="/src/main.ts"></script>
+    <!-- <script>
+      async function calculateProof() {
+        let input = {
+          Aships: "5",
+          Bships: "5",
+          x: "6",
+          y: "5",
+          shipPositions: [
+            ["0", "0"],
+            ["0", "0"],
+            ["0", "0"],
+            ["0", "0"],
+            ["0", "0"],
+          ],
+        };
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+          input,
+          "circuit.wasm",
+          "circuit.zkey"
+        );
+        console.log({ proof, publicSignals });
+
+        const vkey = await fetch("verification_key.json").then(function (res) {
+          return res.json();
+        });
+
+        const res = await snarkjs.groth16.verify(vkey, publicSignals, proof);
+
+        console.log(res);
+      }
+      // calculateProof();
+    </script> -->
+  </body>
+</html>
