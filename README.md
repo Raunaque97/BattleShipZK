@@ -12,6 +12,6 @@ https://docs.circom.io/getting-started/proving-circuits/#powers-of-tau
 
 `snarkjs groth16 setup {}.r1cs pot12_final.ptau circuit.zkey`
 
-### Extracting the verification ket from `.zkey`
+### Extracting the verification key from `.zkey`
 
 `snarkjs zkey export verificationkey circuit.zkey verification_key.json`

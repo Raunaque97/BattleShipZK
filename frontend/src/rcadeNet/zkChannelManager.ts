@@ -1,4 +1,7 @@
 import type DataConnection from "peerjs";
+import * as verification_key from "../../public/verification_key.json";
+import stringify from "canonical-json";
+import { sha256, hmacSHA512, Base64 } from "crypto-js";
 
 export default class zkChannelManager {
   //   state: any = {};
@@ -6,6 +9,8 @@ export default class zkChannelManager {
   waitingForPeer: boolean = false;
 
   conn: DataConnection;
+
+  snarkjs = (window as any).snarkjs as any; // supeer hack
 
   submitInput: () => Promise<any>;
 
@@ -51,11 +56,31 @@ export default class zkChannelManager {
 
   private async handlePlayerMove() {
     let userInputs = await this.submitInput();
-    // update state
-    // generate proof and send to peer
+    // init
+    if (this.seq == 0) {
+      // generate proof and send to peer
+      const { proof, publicSignals } = await this.snarkjs.groth16.fullProve(
+        userInputs,
+        "circuit.wasm",
+        "circuit.zkey"
+      );
 
-    //@ts-ignore
-    this.conn.send(JSON.stringify({ userInputs }));
+      let data = {
+        seq: this.seq,
+        proof: proof,
+        publicSignals: publicSignals,
+      };
+      // sign data
+      let signature = Base64.stringify(
+        hmacSHA512(sha256(stringify(data)), "123") // normal JSON.stringify doesnot honor object key order TODO: setup pvt key
+      );
+
+      // @ts-ignore
+      this.conn.send(JSON.stringify({ data: data, signature: signature }));
+    }
+
+    // update state
+
     this.waitingForPeer = true; // set max wait time
     console.log("handlePlayerMove: sending data", { userInputs });
   }

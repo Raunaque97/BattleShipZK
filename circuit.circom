@@ -1,6 +1,7 @@
 pragma circom 2.0.0;
 
 include "./node_modules/circomlib/circuits/mimcsponge.circom";
+include "./node_modules/circomlib/circuits/comparators.circom";
 
 /*
    Aships:5,
@@ -14,6 +15,18 @@ include "./node_modules/circomlib/circuits/mimcsponge.circom";
       shipPositions:[(0,0),(0,0),(0,0),(0,0),(0,0)]
    }
 
+   A:(State) => {
+      for(i=0; i<5; i++)
+         State.A.shipPositions[i][0]=privateInput(x => (x>=0 && x<10))
+         State.A.shipPositions[i][1]=privateInput(x => (x>=0 && x<10))
+   },
+   B:(State) => {
+      for(i=0; i<5; i++)
+         State.B.shipPositions[i][0]=privateInput(x => (x>=0 && x<10))
+         State.B.shipPositions[i][1]=privateInput(x => (x>=0 && x<10))
+   }
+
+
 */  
 
 template Main() { 
@@ -25,16 +38,36 @@ template Main() {
    signal output hash;
    Aships === 5;
    Bships === 5;
-   shipPositions[0][0] === 0;
-   shipPositions[0][1] === 0;
-   shipPositions[1][0] === 0;
-   shipPositions[1][1] === 0;
-   shipPositions[2][0] === 0;
-   shipPositions[2][1] === 0;
-   shipPositions[3][0] === 0;
-   shipPositions[3][1] === 0;
-   shipPositions[4][0] === 0;
-   shipPositions[4][1] === 0;
+   // shipPositions[i][0] and shipPositions[i][1] should be between 0 and 9
+   component gte0[5];
+   component lt0[5];
+   component gte1[5];
+   component lt1[5];
+   for (var i = 0; i < 5; i++) {
+      // shipPositions[i][0] >= 0
+      gte0[i] = GreaterEqThan(4); // 4bits for 0-9
+      gte0[i].in[0] <== shipPositions[i][0];
+      gte0[i].in[1] <== 0;
+      gte0[i].out === 1;
+
+      // shipPositions[i][0] < 10
+      lt0[i] = LessThan(4); // 4bits for 0-9
+      lt0[i].in[0] <== shipPositions[i][0];
+      lt0[i].in[1] <== 10;
+      lt0[i].out === 1;
+
+      // shipPositions[i][1] >= 0
+      gte1[i] = GreaterEqThan(4); // 4bits for 0-9
+      gte1[i].in[0] <== shipPositions[i][1];
+      gte1[i].in[1] <== 0;
+      gte1[i].out === 1;
+
+      // shipPositions[i][1] < 10
+      lt1[i] = LessThan(4); // 4bits for 0-9
+      lt1[i].in[0] <== shipPositions[i][1];
+      lt1[i].in[1] <== 10;
+      lt1[i].out === 1;
+   }
 
    // calculate hash
    component hasher = MiMCSponge(14, 220, 2);
