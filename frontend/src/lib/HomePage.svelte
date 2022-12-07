@@ -1,14 +1,20 @@
 <script lang="ts">
   import Peer from "peerjs";
   import zkChannelManager from "../rcadeNet/zkChannelManager";
+  import Web3 from "web3";
+  import MyBoard from "./MyBoard.svelte";
 
   let opponentId = "";
   let connected = false;
 
-  let peer = new Peer({
+  const web3 = new Web3();
+  // generate a new wallet, TODO read from local storage if exists
+  let wallet = web3.eth.accounts.create();
+  console.log("wallet", wallet);
+  const pvtkey = wallet.privateKey;
+
+  let peer = new Peer(wallet.address.toLowerCase().substring(2, 5), {
     secure: true,
-    host: "peerjs-broker-2131.herokuapp.com",
-    port: 443,
   });
   let conn;
   let zkcm;
@@ -20,45 +26,114 @@
     connected = true;
     console.log("Network: Connected to opponent ID", connection.peer);
     // @ts-ignore
-    zkcm = new zkChannelManager(connection, submitInput);
+    zkcm = new zkChannelManager(connection, submitInput, pvtkey);
     zkcm.startAsB();
   });
 
   // super hacky
   setTimeout(() => {
     peer = peer;
-    console.log("Network: Peer ID", peer.id);
+    console.log("Network: my Peer ID", peer.id);
   }, 500);
 
   async function looper() {
     while (true) {
-      let userInput = await submitInput();
-      console.log("userInput", userInput);
+      // let userInput = await submitInput();
+      // console.log("userInput", userInput);
       // console.log(peer.id);
-      // await new Promise((resolve) => setTimeout(resolve, 1000));
+      zkcm = zkcm; // Super hacky
+      await new Promise((resolve) => setTimeout(resolve, 100));
       // console.log("sleeping done");
     }
   }
-  // looper();
+  looper();
+
   let x, y;
   var handleClick;
   async function submitInput() {
     return new Promise((resolve, reject) => {
-      handleClick = () => resolve({ x, y });
+      handleClick = () => {
+        if (zkcm.seq == 0) {
+          //innit
+          resolve(getInnitState());
+        }
+        resolve(getNextState());
+      };
     });
+  }
+
+  let shipPositions = [];
+  // generate random ship positions and prevent overlap
+  while (shipPositions.length < 5) {
+    let x = Math.floor(Math.random() * 10);
+    let y = Math.floor(Math.random() * 10);
+    if (!shipPositions.some((pos) => pos[0] == x && pos[1] == y)) {
+      shipPositions.push([x, y]);
+    }
+  }
+  function getInnitState(): any {
+    let state = {
+      Aships: "5",
+      Bships: "5",
+      x: "5",
+      y: "5",
+      shipPositions: shipPositions,
+    };
+    return state;
+  }
+  function getNextState(): unknown {
+    // find if hit
+    let hit = shipPositions.some(
+      (pos) => pos[0] == zkcm.pubState.x && pos[1] == zkcm.pubState.y
+    );
+    if (hit && zkcm.isA) {
+      zkcm.pubState.Aships--;
+    } else if (hit && !zkcm.isA) {
+      zkcm.pubState.Bships--;
+    }
+
+    let state = {
+      Aships: zkcm.pubState.Aships,
+      Bships: zkcm.pubState.Bships,
+      x: x,
+      y: y,
+      shipPositions: shipPositions,
+    };
+    return state;
   }
 </script>
 
 <div>
+  <p>burner wallet address: {wallet.address}</p>
+</div>
+
+<div>
   {#if connected}
-    <p>Connected to opponent ID</p>
-    <!-- display flex withspace inbetween -->
-    <div style="display: flex; justify-content: space-between;">
-      <!-- input numbers x,y between 0 , 9 -->
-      <input type="number" min="0" max="9" bind:value={x} placeholder="x" />
-      <input type="number" min="0" max="9" bind:value={y} placeholder="y" />
-      <button on:click={handleClick}>Fire</button>
-    </div>
+    <p>Connected to opponent ID: {opponentId}</p>
+    <p>turn {zkcm.seq}</p>
+    <MyBoard bind:shipPositions frozen={zkcm.seq > 0} />
+    {#if !zkcm.waitingForPeer}
+      <p>Your turn</p>
+    {/if}
+
+    <!-- if zkcm.seq == 0 -->
+    {#if zkcm.seq == 0}
+      <div>
+        <p>Enter your ship positions</p>
+        <p>TODO: show board</p>
+        <button on:click={handleClick}>start</button>
+      </div>
+    {:else}
+      <!-- display flex withspace inbetween -->
+      <p>TODO: show board</p>
+      <p>fire your shot</p>
+      <div style="display: flex; justify-content: space-between;">
+        <!-- input numbers x,y between 0 , 9 -->
+        <input type="number" min="0" max="9" bind:value={x} placeholder="x" />
+        <input type="number" min="0" max="9" bind:value={y} placeholder="y" />
+        <button on:click={handleClick}>Fire</button>
+      </div>
+    {/if}
   {:else}
     <p>Your ID: {peer.id}</p>
     <p>share your ID with others to connect, or join using other's ID</p>
@@ -72,7 +147,7 @@
             connected = true;
             console.log("Network: peer connected, innitiator");
             // @ts-ignore
-            zkcm = new zkChannelManager(conn, submitInput);
+            zkcm = new zkChannelManager(conn, submitInput, pvtkey);
             zkcm.startAsA();
           });
           conn.on("error", (err) => {
