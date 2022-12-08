@@ -8,6 +8,7 @@ import Base64 from "crypto-js/enc-base64";
 export default class zkChannelManager {
   //   state: any = {};
   seq: number = 0;
+  peerSeq: number = 0;
   isA: boolean = false; // whther this player is A or B
   waitingForPeer: boolean = false;
   conn: DataConnection;
@@ -47,12 +48,16 @@ export default class zkChannelManager {
     this.handlePlayerMove();
     this.waitingForPeer = false;
     this.isA = true;
+    this.seq = 0;
+    this.peerSeq = 0;
   }
 
   public startAsB(): void {
     this.handlePlayerMove();
     this.waitingForPeer = true;
     this.isA = false;
+    this.seq = 0;
+    this.peerSeq = 0;
   }
 
   private async handlePeerMsg(msg: any) {
@@ -73,7 +78,7 @@ export default class zkChannelManager {
 
     // verify proofs public input hash matches previous state hashes
     // verify proof, if valid, update state else complain to smart contract
-    if (this.seq == 0) {
+    if (this.peerSeq == 0) {
       // TODO find a more generic way
       const res = await this.snarkjs.groth16.verify(
         this.vkeys,
@@ -81,7 +86,12 @@ export default class zkChannelManager {
         proof
       );
       console.log("handlePeerMsg: proof verified", res);
+      if (!res) {
+        console.error("handlePeerMsg: proof verification failed!!!"); // TODO complain to smart contract
+      }
     }
+
+    this.peerSeq++;
     // update states
     // TODO: extract public state variables from publicSignals but for now
     this.pubState = data.pubState;
@@ -136,6 +146,6 @@ export default class zkChannelManager {
 
     this.waitingForPeer = true; // set max wait time
     this.seq++;
-    console.log("handlePlayerMove: waiting for peer", this.seq);
+    // console.log("handlePlayerMove: waiting for peer", this.seq);
   }
 }

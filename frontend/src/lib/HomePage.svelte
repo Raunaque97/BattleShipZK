@@ -73,10 +73,10 @@
   }
   function getInnitState(): any {
     let state = {
-      Aships: "5",
-      Bships: "5",
-      x: "5",
-      y: "5",
+      Aships: 5,
+      Bships: 5,
+      x: 10,
+      y: 10,
       shipPositions: shipPositions,
     };
     return state;
@@ -110,23 +110,22 @@
 <div>
   {#if connected}
     <p>Connected to opponent ID: {opponentId}</p>
-    <p>turn {zkcm.seq}</p>
+    <h3>Turn {zkcm.seq}</h3>
     <MyBoard bind:shipPositions frozen={zkcm.seq > 0} />
-    {#if !zkcm.waitingForPeer}
-      <p>Your turn</p>
-    {/if}
-
     <!-- if zkcm.seq == 0 -->
     {#if zkcm.seq == 0}
       <div>
-        <p>Enter your ship positions</p>
-        <p>TODO: show board</p>
-        <button on:click={handleClick}>start</button>
+        {#if zkcm.waitingForPeer}
+          <p>Waiting for opponent...</p>
+        {:else}
+          <p>Enter your ship positions</p>
+          <button on:click={handleClick}>start</button>
+        {/if}
       </div>
+    {:else if zkcm.waitingForPeer}
+      <p>Waiting for opponent...</p>
     {:else}
-      <!-- display flex withspace inbetween -->
-      <p>TODO: show board</p>
-      <p>fire your shot</p>
+      <p>Fire your shot</p>
       <div style="display: flex; justify-content: space-between;">
         <!-- input numbers x,y between 0 , 9 -->
         <input type="number" min="0" max="9" bind:value={x} placeholder="x" />
