@@ -1,5 +1,6 @@
 import type DataConnection from "peerjs";
-import * as verification_key from "../assets/verification_key.json";
+import * as init_vk from "../assets/init_vk.json";
+import * as move_vk from "../assets/move_vk.json";
 import stringify from "canonical-json";
 import sha256 from "crypto-js/sha256";
 import hmacSHA512 from "crypto-js/hmac-sha512";
@@ -20,7 +21,7 @@ export default class zkChannelManager {
   peerPvtStateHash: any;
   pvtKey;
 
-  vkeys = verification_key;
+  vkeys = {};
 
   constructor(
     conn: DataConnection,
@@ -42,6 +43,8 @@ export default class zkChannelManager {
 
     // get json from verification_key.json
     // let vkey = verification_key;
+    this.vkeys["init"] = init_vk;
+    this.vkeys["move"] = move_vk;
   }
 
   public startAsA(): void {
@@ -81,7 +84,17 @@ export default class zkChannelManager {
     if (this.peerSeq == 0) {
       // TODO find a more generic way
       const res = await this.snarkjs.groth16.verify(
-        this.vkeys,
+        this.vkeys["init"],
+        publicSignals,
+        proof
+      );
+      console.log("handlePeerMsg: proof verified", res);
+      if (!res) {
+        console.error("handlePeerMsg: proof verification failed!!!"); // TODO complain to smart contract
+      }
+    } else {
+      const res = await this.snarkjs.groth16.verify(
+        this.vkeys["move"],
         publicSignals,
         proof
       );

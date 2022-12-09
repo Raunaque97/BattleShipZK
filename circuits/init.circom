@@ -1,7 +1,7 @@
 pragma circom 2.0.0;
 
-include "./node_modules/circomlib/circuits/mimcsponge.circom";
-include "./node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/circomlib/circuits/mimcsponge.circom";
+include "../node_modules/circomlib/circuits/comparators.circom";
 
 /*
    Aships:5,
@@ -25,8 +25,6 @@ include "./node_modules/circomlib/circuits/comparators.circom";
          State.B.shipPositions[i][0]=privateInput(x => (x>=0 && x<10))
          State.B.shipPositions[i][1]=privateInput(x => (x>=0 && x<10))
    }
-
-
 */  
 
 template Main() { 
@@ -69,16 +67,12 @@ template Main() {
       lt1[i].out === 1;
    }
 
-   // calculate hash
-   component hasher = MiMCSponge(14, 220, 2);
+   // calculate hash of private states
+   component hasher = MiMCSponge(10, 220, 1);
    hasher.k <== 0;
-   hasher.ins[0] <== Aships;
-   hasher.ins[1] <== Bships;
-   hasher.ins[2] <== x;
-   hasher.ins[3] <== y;
    for (var i = 0; i < 5; i++) {
-      hasher.ins[4+i*2] <== shipPositions[i][0];
-      hasher.ins[5+i*2] <== shipPositions[i][1];
+      hasher.ins[i*2] <== shipPositions[i][0];
+      hasher.ins[1+i*2] <== shipPositions[i][1];
    }
    hash <== hasher.outs[0];
 
