@@ -18,6 +18,7 @@ export default class zkChannelManager {
 
   pubState: any = {};
   pvtState: any = {};
+  pvtStateHash: any;
   peerPvtStateHash: any;
   pvtKey;
 
@@ -79,6 +80,9 @@ export default class zkChannelManager {
     let peerPublicKey = this.conn.peer;
     console.log("handlePeerMsg: received data", { msg });
 
+    if (data.seq != this.peerSeq) {
+      console.warn("handlePeerMsg: seq mismatch", data.seq, this.peerSeq);
+    }
     // verify proofs public input hash matches previous state hashes
     // verify proof, if valid, update state else complain to smart contract
     if (this.peerSeq == 0) {
@@ -93,11 +97,16 @@ export default class zkChannelManager {
         console.error("handlePeerMsg: proof verification failed!!!"); // TODO complain to smart contract
       }
     } else {
-      const res = await this.snarkjs.groth16.verify(
+      let res = await this.snarkjs.groth16.verify(
         this.vkeys["move"],
         publicSignals,
         proof
       );
+      // prevPvtHash should match peerPvtStateHash
+      if (publicSignals[1] != this.peerPvtStateHash) {
+        console.error("handlePeerMsg: pvtStateHash mismatch!!!"); // TODO complain to smart contract
+        res = false;
+      }
       console.log("handlePeerMsg: proof verified", res);
       if (!res) {
         console.error("handlePeerMsg: proof verification failed!!!"); // TODO complain to smart contract
@@ -106,9 +115,9 @@ export default class zkChannelManager {
 
     this.peerSeq++;
     // update states
-    // TODO: extract public state variables from publicSignals but for now
+    // TODO: extract public state variables from publicSignals and verify but for now
     this.pubState = data.pubState;
-    this.peerPvtStateHash = data.pvtStateHash;
+    this.peerPvtStateHash = data.publicSignals[0]; // circuit outputs pvtStateHash
 
     this.handlePlayerMove();
   }
@@ -119,32 +128,49 @@ export default class zkChannelManager {
     let proof;
     let publicSignals;
     if (this.seq == 0) {
-      // generate proof
-      console.log("handlePlayerMove: generating proof", newSates);
+      console.log("handlePlayerMove: generating proof", { newSates });
       ({ proof, publicSignals } = await this.snarkjs.groth16.fullProve(
-        newSates,
-        "circuit.wasm",
-        "circuit.zkey"
+        { ...newSates.pubState, ...newSates.pvtState },
+        "init.wasm",
+        "init.zkey"
       ));
     } else {
-      // TODO: generate proof and send to peer
-      console.log("handlePlayerMove: generating proof", newSates);
-
+      // add _prev postfix to all prevState variables
+      let prevStates = {};
+      for (let key in this.pubState) {
+        prevStates[key + "_prev"] = this.pubState[key];
+      }
+      for (let key in this.pvtState) {
+        prevStates[key + "_prev"] = this.pvtState[key];
+      }
+      console.log(
+        "handlePlayerMove: generating proof",
+        { prevStates },
+        { newSates }
+      );
       // generate proof
-      proof = null; // TODO
-      publicSignals = null;
+      ({ proof, publicSignals } = await this.snarkjs.groth16.fullProve(
+        {
+          ...prevStates,
+          ...newSates.pubState,
+          ...newSates.pvtState,
+          prevPvtHash: this.pvtStateHash,
+        },
+        "move.wasm",
+        "move.zkey"
+      ));
     }
 
-    // update state, TODO find a geneic way!
-    let shipPositions;
-    ({ shipPositions, ...this.pubState } = newSates);
-    this.pvtState = shipPositions;
+    // update states
+    // deep copy newSates.pubState
+    this.pubState = JSON.parse(JSON.stringify(newSates.pubState));
+    this.pvtState = JSON.parse(JSON.stringify(newSates.pvtState));
+    this.pvtStateHash = publicSignals[0];
 
     let data = {
       seq: this.seq,
       proof: proof,
       publicSignals: publicSignals,
-      pvtStateHash: Base64.stringify(sha256(stringify(this.pvtState))),
       pubState: this.pubState, // TODO: not exactly needed as it is already in publicSignals
     };
     // sign data
@@ -153,9 +179,7 @@ export default class zkChannelManager {
     );
     // @ts-ignore
     this.conn.send(JSON.stringify({ data: data, signature: signature }));
-    console.log("handlePlayerMove: sending data", { newSates });
-
-    // update state
+    console.log("handlePlayerMove: sending data", { data });
 
     this.waitingForPeer = true; // set max wait time
     this.seq++;

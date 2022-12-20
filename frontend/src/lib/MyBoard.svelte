@@ -6,7 +6,7 @@
   const size = 11;
   const gridWidth = 20;
 
-  console.log("shipPositions", shipPositions);
+  // console.log("shipPositions", shipPositions);
 
   function handleDrop(offsetX, offsetY, prevRow, prevCol) {
     // the ships should snap to the nearest grid

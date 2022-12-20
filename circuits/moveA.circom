@@ -23,7 +23,6 @@ include "../node_modules/circomlib/circuits/gates.circom";
 //  output the next state hash
 template Main() { 
     signal input prevPvtHash;  
-    signal input prevPubHash;
     // previous state 
     signal input Aships_prev;
     signal input Bships_prev;
@@ -68,7 +67,6 @@ template Main() {
 
         tmp1 += and1[i].out;
     }
-    tmp1 === 1;
 
     Aships === (Aships_prev - tmp1);
     Bships === Bships_prev;
@@ -83,4 +81,4 @@ template Main() {
     hash <== hasher1.outs[0];
 }
 
-component main = Main();
+component main { public [prevPvtHash, Aships, Bships, x, y] } = Main();

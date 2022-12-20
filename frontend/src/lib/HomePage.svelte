@@ -72,12 +72,17 @@
     }
   }
   function getInnitState(): any {
+    console.log("getInnitState, shipPositions", shipPositions);
     let state = {
-      Aships: 5,
-      Bships: 5,
-      x: 10,
-      y: 10,
-      shipPositions: shipPositions,
+      pubState: {
+        Aships: 5,
+        Bships: 5,
+        x: 10,
+        y: 10,
+      },
+      pvtState: {
+        shipPositions: shipPositions,
+      },
     };
     return state;
   }
@@ -86,18 +91,19 @@
     let hit = shipPositions.some(
       (pos) => pos[0] == zkcm.pubState.x && pos[1] == zkcm.pubState.y
     );
-    if (hit && zkcm.isA) {
-      zkcm.pubState.Aships--;
-    } else if (hit && !zkcm.isA) {
-      zkcm.pubState.Bships--;
-    }
 
     let state = {
-      Aships: zkcm.pubState.Aships,
-      Bships: zkcm.pubState.Bships,
-      x: x,
-      y: y,
-      shipPositions: shipPositions,
+      pubState: {
+        Aships:
+          hit && zkcm.isA ? zkcm.pubState.Aships - 1 : zkcm.pubState.Aships,
+        Bships:
+          hit && !zkcm.isA ? zkcm.pubState.Bships - 1 : zkcm.pubState.Bships,
+        x: x,
+        y: y,
+      },
+      pvtState: {
+        shipPositions: shipPositions,
+      },
     };
     return state;
   }
@@ -111,6 +117,11 @@
   {#if connected}
     <p>Connected to opponent ID: {opponentId}</p>
     <h3>Turn {zkcm.seq}</h3>
+    {#if zkcm.isA}
+      <p>A, your ships: {zkcm.pubState.Aships}</p>
+    {:else}
+      <p>B, your ships: {zkcm.pubState.Bships}</p>
+    {/if}
     <MyBoard bind:shipPositions frozen={zkcm.seq > 0} />
     <!-- if zkcm.seq == 0 -->
     {#if zkcm.seq == 0}

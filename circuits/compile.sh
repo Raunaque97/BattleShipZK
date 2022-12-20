@@ -33,4 +33,7 @@ for file in "$target_folder"/*.circom; do
   # move the _vk.json files to the vk_target_folder
   mv "$filename"_vk.json "$vk_target_folder"
 
+  # TODO: generate the .sol file using snarkjs
+  # TODO: remove the previous generated files if any (r1cs, zkey, wasm, _vk.json) incase of file name change
+
 done

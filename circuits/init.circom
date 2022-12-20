@@ -6,8 +6,8 @@ include "../node_modules/circomlib/circuits/comparators.circom";
 /*
    Aships:5,
 	Bships:5,
-	x:undefined,
-   y:undefined,
+	x:10,
+   y:20,
    A:{
       shipPositions:[(0,0),(0,0),(0,0),(0,0),(0,0)]
    }
@@ -36,6 +36,8 @@ template Main() {
    signal output hash;
    Aships === 5;
    Bships === 5;
+   x === 10;
+   y === 10;
    // shipPositions[i][0] and shipPositions[i][1] should be between 0 and 9
    component gte0[5];
    component lt0[5];
@@ -78,4 +80,4 @@ template Main() {
 
 }
 
-component main = Main();
+component main { public [Aships, Bships, x, y] } = Main();
