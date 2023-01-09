@@ -1,6 +1,7 @@
 import type DataConnection from "peerjs";
 import * as init_vk from "../assets/init_vk.json";
-import * as move_vk from "../assets/move_vk.json";
+import * as moveA_vk from "../assets/moveA_vk.json";
+import * as moveB_vk from "../assets/moveB_vk.json";
 import stringify from "canonical-json";
 import sha256 from "crypto-js/sha256";
 import hmacSHA512 from "crypto-js/hmac-sha512";
