@@ -1,4 +1,11 @@
-### compiling circuits
+
+
+## Frontend
+
+the simple front-end is implemented using svelte to test the circuits
+
+
+## compiling circuits
 
 `circom {}.circom --r1cs --wasm --sym`
 produces `{}.rics` & `{}.wasm` files
@@ -7,7 +14,7 @@ produces `{}.rics` & `{}.wasm` files
 
 https://docs.circom.io/getting-started/proving-circuits/#powers-of-tau
 
-#### generating {}.zkey
+### generating {}.zkey
 
 `snarkjs groth16 setup {}.r1cs pot12_final.ptau circuit.zkey`
 
@@ -15,6 +22,6 @@ https://docs.circom.io/getting-started/proving-circuits/#powers-of-tau
 
 `snarkjs zkey export verificationkey circuit.zkey verification_key.json`
 
-### Using compile.sh
+### Or use compile.sh
 
 cd into circuits and run `./compile.sh` it runs all the above necessary commands and conviniently places the .wasm, .zkey files in the respective target locations inside `/frontend` to be used by the dapp.

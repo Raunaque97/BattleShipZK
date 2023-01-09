@@ -12,8 +12,8 @@ include "../node_modules/circomlib/circuits/gates.circom";
         for(i=0; i<5; i++)
             if(State.x==State.A.[0] && State.y==State.A.[1]) // hit
                 Aships = Aships-1;
-        State.x = publicInput(x => (x>=0 && x<=10))
-        State.y = publicInput(x => (x>=0 && x<=10))
+        State.x = publicInput(x => (x>=0 && x<10))
+        State.y = publicInput(x => (x>=0 && x<10))
         },
 */
 
@@ -70,6 +70,29 @@ template Main() {
 
     Aships === (Aships_prev - tmp1);
     Bships === Bships_prev;
+
+    // x and y should be in range
+    component geq1 = GreaterEqThan(4);
+    geq1.in[0] <== x;
+    geq1.in[1] <== 0;
+    component leq1 = LessThan(4);
+    leq1.in[0] <== x;
+    leq1.in[1] <== 10;
+    component and2 = AND();
+    and2.a <== geq1.out;
+    and2.b <== leq1.out;
+    and2.out === 1;
+
+    component geq2 = GreaterEqThan(4);
+    geq2.in[0] <== y;
+    geq2.in[1] <== 0;
+    component leq2 = LessThan(4);
+    leq2.in[0] <== y;
+    leq2.in[1] <== 10;
+    component and3 = AND();
+    and3.a <== geq2.out;
+    and3.b <== leq2.out;
+    and3.out === 1;
 
     // calculate hash
     component hasher1 = MiMCSponge(10, 220, 1);

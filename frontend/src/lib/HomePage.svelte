@@ -10,7 +10,7 @@
   const web3 = new Web3();
   // generate a new wallet, TODO read from local storage if exists
   let wallet = web3.eth.accounts.create();
-  console.log("wallet", wallet);
+  console.log("Your Hot wallet", {wallet});
   const pvtkey = wallet.privateKey;
 
   let peer = new Peer(wallet.address.toLowerCase().substring(2, 5), {
@@ -19,7 +19,7 @@
   let conn;
   let zkcm;
   peer.on("error", (err) => {
-    console.log("Network: Network/peer error: " + err);
+    console.error("Network: Network/peer error: " + err);
   });
   peer.on("connection", (connection) => {
     conn = connection;
@@ -33,7 +33,7 @@
   // super hacky
   setTimeout(() => {
     peer = peer;
-    console.log("Network: my Peer ID", peer.id);
+    // console.log("Network: my Peer ID", peer.id);
   }, 500);
 
   async function looper() {
@@ -72,7 +72,7 @@
     }
   }
   function getInnitState(): any {
-    console.log("getInnitState, shipPositions", shipPositions);
+    console.log("Your shipPositions:", {shipPositions});
     let state = {
       pubState: {
         Aships: 5,
@@ -151,17 +151,17 @@
       <input type="text" bind:value={opponentId} />
       <button
         on:click={() => {
-          console.log("opponentId", opponentId);
+          // console.log("opponentId", opponentId);
           conn = peer.connect(opponentId, { reliable: true }); // TODO change peerId,
           conn.on("open", () => {
             connected = true;
-            console.log("Network: peer connected, innitiator");
+            // console.log("Network: peer connected, innitiator");
             // @ts-ignore
             zkcm = new zkChannelManager(conn, submitInput, pvtkey);
             zkcm.startAsA();
           });
           conn.on("error", (err) => {
-            console.log("Network/peerConn, innitiator error: " + err);
+            console.error("Network/peerConn, innitiator error: " + err);
           });
         }}>connect</button
       >

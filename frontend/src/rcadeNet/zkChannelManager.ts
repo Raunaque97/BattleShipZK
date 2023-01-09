@@ -6,6 +6,7 @@ import stringify from "canonical-json";
 import sha256 from "crypto-js/sha256";
 import hmacSHA512 from "crypto-js/hmac-sha512";
 import Base64 from "crypto-js/enc-base64";
+import { consoleStyles } from "./constants";
 
 export default class zkChannelManager {
   //   state: any = {};
@@ -34,7 +35,7 @@ export default class zkChannelManager {
     this.submitInput = submitInput;
     this.pvtKey = pvtKey;
 
-    console.log("zkChannelManager created", conn);
+    console.log("zkChannelManager created", {conn});
     //@ts-ignore
     this.conn.on("data", (msg) => {
       // console.log("Network: data received: " + msg);
@@ -46,7 +47,8 @@ export default class zkChannelManager {
     // get json from verification_key.json
     // let vkey = verification_key;
     this.vkeys["init"] = init_vk;
-    this.vkeys["move"] = move_vk;
+    this.vkeys["moveA"] = moveA_vk;
+    this.vkeys["moveB"] = moveB_vk;
   }
 
   public startAsA(): void {
@@ -69,7 +71,7 @@ export default class zkChannelManager {
     if (this.waitingForPeer) {
       this.waitingForPeer = false;
     } else {
-      console.log("Network: unexpected message");
+      console.warn("%cP2P <<<", consoleStyles.important, "unexpected message received:", {msg});
       return;
       // TODO: catch cheater
     }
@@ -79,48 +81,49 @@ export default class zkChannelManager {
     let publicSignals = data.publicSignals;
     // TODO: verify signature
     let peerPublicKey = this.conn.peer;
-    console.log("handlePeerMsg: received data", { msg });
-
+    console.log("%cP2P <<<", consoleStyles.important , "received data:", { msg });
     if (data.seq != this.peerSeq) {
-      console.warn("handlePeerMsg: seq mismatch", data.seq, this.peerSeq);
+      console.warn("%cP2P <<<", consoleStyles.important , `seq mismatch !!, peer send {data.seq} but expecting ${this.peerSeq}`);
     }
-    // verify proofs public input hash matches previous state hashes
+
     // verify proof, if valid, update state else complain to smart contract
-    if (this.peerSeq == 0) {
-      // TODO find a more generic way
-      const res = await this.snarkjs.groth16.verify(
-        this.vkeys["init"],
-        publicSignals,
-        proof
-      );
-      console.log("handlePeerMsg: proof verified", res);
-      if (!res) {
-        console.error("handlePeerMsg: proof verification failed!!!"); // TODO complain to smart contract
-      }
+    // time the following execution
+    let time = performance.now();
+    let res = await this.verifyProof(proof, publicSignals);
+    time = performance.now() - time;
+    if(res) {
+      // update states
+      console.log(`%c proofVerification: proof verified in ${(time/1000).toFixed(5)} sec`, consoleStyles.verification_success);
+      
+      this.peerSeq++;
+      // update states
+      // TODO: extract public state variables from publicSignals and verify but for now, (vernability)
+      this.pubState = data.pubState;
+      this.peerPvtStateHash = data.publicSignals[0]; // circuit outputs pvtStateHash
+      this.handlePlayerMove();
     } else {
-      let res = await this.snarkjs.groth16.verify(
-        this.vkeys["move"],
-        publicSignals,
-        proof
-      );
-      // prevPvtHash should match peerPvtStateHash
+      console.error("handlePeerMsg: proof verification failed!!!"); // TODO complain to smart contract
+    }
+  }
+
+  private async verifyProof(proof: any, publicSignals: any): Promise<boolean> {
+    let verification_key;
+    // find vkey to verify proof
+    if (this.peerSeq == 0) {
+      verification_key = this.vkeys["init"];
+    } else {
+      verification_key = this.isA ? this.vkeys["moveB"] : this.vkeys["moveA"];
+      // prevPvtHash should match peerPvtStateHash, peer may use incorrect input to proof.
       if (publicSignals[1] != this.peerPvtStateHash) {
-        console.error("handlePeerMsg: pvtStateHash mismatch!!!"); // TODO complain to smart contract
-        res = false;
-      }
-      console.log("handlePeerMsg: proof verified", res);
-      if (!res) {
-        console.error("handlePeerMsg: proof verification failed!!!"); // TODO complain to smart contract
+        console.error("proofVerification: pvtStateHash doesn't match!!!");
+        return false;
       }
     }
-
-    this.peerSeq++;
-    // update states
-    // TODO: extract public state variables from publicSignals and verify but for now
-    this.pubState = data.pubState;
-    this.peerPvtStateHash = data.publicSignals[0]; // circuit outputs pvtStateHash
-
-    this.handlePlayerMove();
+    return await this.snarkjs.groth16.verify(
+      verification_key,
+      publicSignals,
+      proof
+    );
   }
 
   private async handlePlayerMove() {
@@ -128,40 +131,40 @@ export default class zkChannelManager {
     // init
     let proof;
     let publicSignals;
-    if (this.seq == 0) {
-      console.log("handlePlayerMove: generating proof", { newSates });
-      ({ proof, publicSignals } = await this.snarkjs.groth16.fullProve(
-        { ...newSates.pubState, ...newSates.pvtState },
-        "init.wasm",
-        "init.zkey"
-      ));
+    let inputs = undefined;
+    let vkeyName = undefined;
+
+    console.log("handlePlayerMove: generating proof");
+    if(this.seq == 0) {
+      inputs = { ...newSates.pubState, ...newSates.pvtState };
+      vkeyName = "init";
     } else {
       // add _prev postfix to all prevState variables
       let prevStates = {};
-      for (let key in this.pubState) {
+      for(let key in this.pubState) {
         prevStates[key + "_prev"] = this.pubState[key];
       }
-      for (let key in this.pvtState) {
+      for(let key in this.pvtState) {
         prevStates[key + "_prev"] = this.pvtState[key];
       }
-      console.log(
-        "handlePlayerMove: generating proof",
-        { prevStates },
-        { newSates }
-      );
-      // generate proof
-      ({ proof, publicSignals } = await this.snarkjs.groth16.fullProve(
-        {
-          ...prevStates,
-          ...newSates.pubState,
-          ...newSates.pvtState,
-          prevPvtHash: this.pvtStateHash,
-        },
-        "move.wasm",
-        "move.zkey"
-      ));
+      inputs = {...prevStates, ...newSates.pubState, ...newSates.pvtState, prevPvtHash: this.pvtStateHash};
+      vkeyName = this.isA ? "moveA" : "moveB";
     }
-
+    try {
+      let time = performance.now();
+      ({ proof, publicSignals } = await this.snarkjs.groth16.fullProve(
+        inputs,
+        vkeyName + ".wasm",
+        vkeyName + ".zkey"
+      ));
+      time = performance.now() - time;
+      console.log(`%c proofGeneration: proof generated in ${(time/1000).toFixed(5)} sec`, consoleStyles.proof_generation);
+    } catch (error) {
+      console.warn("%cproof generation failed!!!", consoleStyles.important, error);
+      this.handlePlayerMove();
+      return;
+    }
+    
     // update states
     // deep copy newSates.pubState
     this.pubState = JSON.parse(JSON.stringify(newSates.pubState));
@@ -180,10 +183,11 @@ export default class zkChannelManager {
     );
     // @ts-ignore
     this.conn.send(JSON.stringify({ data: data, signature: signature }));
-    console.log("handlePlayerMove: sending data", { data });
+    console.log("%cP2P>>>: ", consoleStyles.important, "sending data:", { data });
 
     this.waitingForPeer = true; // set max wait time
     this.seq++;
     // console.log("handlePlayerMove: waiting for peer", this.seq);
   }
 }
+
