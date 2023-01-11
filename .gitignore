@@ -22,4 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# circom
 *.ptau
+*.r1cs
+*.wasm
+*.zkey
