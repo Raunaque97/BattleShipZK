@@ -10,7 +10,7 @@
   const web3 = new Web3();
   // generate a new wallet, TODO read from local storage if exists
   let wallet = web3.eth.accounts.create();
-  console.log("Your Hot wallet", {wallet});
+  console.log("Your Hot wallet", { wallet });
   const pvtkey = wallet.privateKey;
 
   let peer = new Peer(wallet.address.toLowerCase().substring(2, 5), {
@@ -38,12 +38,9 @@
 
   async function looper() {
     while (true) {
-      // let userInput = await submitInput();
       // console.log("userInput", userInput);
-      // console.log(peer.id);
       zkcm = zkcm; // Super hacky
       await new Promise((resolve) => setTimeout(resolve, 100));
-      // console.log("sleeping done");
     }
   }
   looper();
@@ -63,6 +60,8 @@
   }
 
   let shipPositions = [];
+  let AshipsCount = 5;
+  let BshipsCount = 5;
   // generate random ship positions and prevent overlap
   while (shipPositions.length < 5) {
     let x = Math.floor(Math.random() * 10);
@@ -72,7 +71,7 @@
     }
   }
   function getInnitState(): any {
-    console.log("Your shipPositions:", {shipPositions});
+    console.log("Your shipPositions:", { shipPositions });
     let state = {
       pubState: {
         Aships: 5,
@@ -87,17 +86,10 @@
     return state;
   }
   function getNextState(): unknown {
-    // find if hit
-    let hit = shipPositions.some(
-      (pos) => pos[0] == zkcm.pubState.x && pos[1] == zkcm.pubState.y
-    );
-
     let state = {
       pubState: {
-        Aships:
-          hit && zkcm.isA ? zkcm.pubState.Aships - 1 : zkcm.pubState.Aships,
-        Bships:
-          hit && !zkcm.isA ? zkcm.pubState.Bships - 1 : zkcm.pubState.Bships,
+        Aships: AshipsCount,
+        Bships: BshipsCount,
         x: x,
         y: y,
       },
@@ -106,6 +98,69 @@
       },
     };
     return state;
+  }
+
+  // detect hit immediately
+  $: if (zkcm && zkcm.seq > 0) {
+    let hit = shipPositions.some(
+      (pos) => pos[0] == zkcm.pubState.x && pos[1] == zkcm.pubState.y
+    );
+    if (hit) {
+      // update shipPositions with (10,10) to remove ship
+      shipPositions = shipPositions.map((pos) =>
+        pos[0] == zkcm.pubState.x && pos[1] == zkcm.pubState.y ? [10, 10] : pos
+      );
+
+      if (zkcm.isA) {
+        AshipsCount--;
+      } else {
+        BshipsCount--;
+      }
+      console.log(
+        "%cHIT !!!",
+        "color: red; font-size: 30px; background-color: yellow; animation: flash 1s infinite;"
+      );
+    }
+  }
+
+  // detect strike immediately
+  $: if (zkcm && zkcm.seq > 0) {
+    if (zkcm.isA) {
+      if (zkcm.pubState.Bships < BshipsCount) {
+        console.log(
+          "%cSTRIKE !!!",
+          "color: red; font-size: 20px; background-color: yellow;"
+        );
+        BshipsCount--;
+      }
+    } else {
+      if (zkcm.pubState.Aships < AshipsCount) {
+        console.log(
+          "%cSTRIKE !!!",
+          "color: red; font-size: 20px; background-color: yellow;"
+        );
+        AshipsCount--;
+      }
+    }
+  }
+
+  // detect win/lose
+  $: if (zkcm && zkcm.seq > 0) {
+    if ((BshipsCount == 0 && zkcm.isA) || (AshipsCount == 0 && !zkcm.isA)) {
+      // log with flashing animated background style
+      console.log(
+        "%cYou WON !!!",
+        "color: green; font-size: 30px; background-color: yellow;"
+      );
+    } else if (
+      (AshipsCount == 0 && zkcm.isA) ||
+      (BshipsCount == 0 && !zkcm.isA)
+    ) {
+      console.log(
+        "%cYou Lost !!!",
+        "color: red; font-size: 30px; background-color: yellow;"
+      );
+    }
   }
 </script>
 
@@ -118,9 +173,9 @@
     <p>Connected to opponent ID: {opponentId}</p>
     <h3>Turn {zkcm.seq}</h3>
     {#if zkcm.isA}
-      <p>A, your ships: {zkcm.pubState.Aships}</p>
+      <p>A, your ships: {AshipsCount}</p>
     {:else}
-      <p>B, your ships: {zkcm.pubState.Bships}</p>
+      <p>B, your ships: {BshipsCount}</p>
     {/if}
     <MyBoard bind:shipPositions frozen={zkcm.seq > 0} />
     <!-- if zkcm.seq == 0 -->

@@ -3,8 +3,8 @@
 
   export let shipPositions: [number, number][];
   export let frozen = false;
-  const size = 11;
-  const gridWidth = 20;
+  const size = 10;
+  const gridWidth = 25;
 
   // console.log("shipPositions", shipPositions);
 

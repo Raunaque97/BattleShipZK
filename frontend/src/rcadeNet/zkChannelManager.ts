@@ -35,7 +35,7 @@ export default class zkChannelManager {
     this.submitInput = submitInput;
     this.pvtKey = pvtKey;
 
-    console.log("zkChannelManager created", {conn});
+    console.log("zkChannelManager created", { conn });
     //@ts-ignore
     this.conn.on("data", (msg) => {
       // console.log("Network: data received: " + msg);
@@ -71,7 +71,12 @@ export default class zkChannelManager {
     if (this.waitingForPeer) {
       this.waitingForPeer = false;
     } else {
-      console.warn("%cP2P <<<", consoleStyles.important, "unexpected message received:", {msg});
+      console.warn(
+        "%cP2P <<<",
+        consoleStyles.important,
+        "unexpected message received:",
+        { msg }
+      );
       return;
       // TODO: catch cheater
     }
@@ -81,9 +86,15 @@ export default class zkChannelManager {
     let publicSignals = data.publicSignals;
     // TODO: verify signature
     let peerPublicKey = this.conn.peer;
-    console.log("%cP2P <<<", consoleStyles.important , "received data:", { msg });
+    console.log("%cP2P <<<", consoleStyles.important, "received data:", {
+      msg,
+    });
     if (data.seq != this.peerSeq) {
-      console.warn("%cP2P <<<", consoleStyles.important , `seq mismatch !!, peer send {data.seq} but expecting ${this.peerSeq}`);
+      console.warn(
+        "%cP2P <<<",
+        consoleStyles.important,
+        `seq mismatch !!, peer send {data.seq} but expecting ${this.peerSeq}`
+      );
     }
 
     // verify proof, if valid, update state else complain to smart contract
@@ -91,10 +102,15 @@ export default class zkChannelManager {
     let time = performance.now();
     let res = await this.verifyProof(proof, publicSignals);
     time = performance.now() - time;
-    if(res) {
+    if (res) {
       // update states
-      console.log(`%c proofVerification: proof verified in ${(time/1000).toFixed(5)} sec`, consoleStyles.verification_success);
-      
+      console.log(
+        `%c proofVerification: proof verified in ${(time / 1000).toFixed(
+          5
+        )} sec`,
+        consoleStyles.verification_success
+      );
+
       this.peerSeq++;
       // update states
       // TODO: extract public state variables from publicSignals and verify but for now, (vernability)
@@ -135,19 +151,24 @@ export default class zkChannelManager {
     let vkeyName = undefined;
 
     console.log("handlePlayerMove: generating proof");
-    if(this.seq == 0) {
+    if (this.seq == 0) {
       inputs = { ...newSates.pubState, ...newSates.pvtState };
       vkeyName = "init";
     } else {
       // add _prev postfix to all prevState variables
       let prevStates = {};
-      for(let key in this.pubState) {
+      for (let key in this.pubState) {
         prevStates[key + "_prev"] = this.pubState[key];
       }
-      for(let key in this.pvtState) {
+      for (let key in this.pvtState) {
         prevStates[key + "_prev"] = this.pvtState[key];
       }
-      inputs = {...prevStates, ...newSates.pubState, ...newSates.pvtState, prevPvtHash: this.pvtStateHash};
+      inputs = {
+        ...prevStates,
+        ...newSates.pubState,
+        ...newSates.pvtState,
+        prevPvtHash: this.pvtStateHash,
+      };
       vkeyName = this.isA ? "moveA" : "moveB";
     }
     try {
@@ -158,13 +179,22 @@ export default class zkChannelManager {
         vkeyName + ".zkey"
       ));
       time = performance.now() - time;
-      console.log(`%c proofGeneration: proof generated in ${(time/1000).toFixed(5)} sec`, consoleStyles.proof_generation);
+      console.log(
+        `%c proofGeneration: proof generated in ${(time / 1000).toFixed(
+          5
+        )} sec`,
+        consoleStyles.proof_generation
+      );
     } catch (error) {
-      console.warn("%cproof generation failed!!!", consoleStyles.important, error);
+      console.warn(
+        "%cproof generation failed!!!",
+        consoleStyles.important,
+        error
+      );
       this.handlePlayerMove();
       return;
     }
-    
+
     // update states
     // deep copy newSates.pubState
     this.pubState = JSON.parse(JSON.stringify(newSates.pubState));
@@ -183,11 +213,12 @@ export default class zkChannelManager {
     );
     // @ts-ignore
     this.conn.send(JSON.stringify({ data: data, signature: signature }));
-    console.log("%cP2P>>>: ", consoleStyles.important, "sending data:", { data });
+    console.log("%cP2P>>>: ", consoleStyles.important, "sending data:", {
+      data,
+    });
 
     this.waitingForPeer = true; // set max wait time
     this.seq++;
     // console.log("handlePlayerMove: waiting for peer", this.seq);
   }
 }
-

@@ -52,6 +52,7 @@ template Main() {
     component eq1[5];
     component eq2[5];
     component and1[5];
+    component mux1[5];
     for (var i = 0; i < 5; i++) {
         eq1[i] = IsEqual();
         eq1[i].in[0] <== shipPositions_prev[i][0];
@@ -66,6 +67,13 @@ template Main() {
         and1[i].b <== eq2[i].out;
 
         tmp1 += and1[i].out;
+
+        // update ship positions, if hit update to 10
+        mux1[i] =  Mux1();
+        mux1[i].c[0] <== shipPositions_prev[i][0];
+        mux1[i].c[1] <== 10;
+        mux1[i].s <== and1[i].out;
+        shipPositions[i][0] === mux1[i].out;
     }
 
     Aships === (Aships_prev - tmp1);

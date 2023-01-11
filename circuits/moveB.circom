@@ -12,8 +12,8 @@ include "../node_modules/circomlib/circuits/gates.circom";
         for(i=0; i<5; i++)
             if(State.x==State.A.[0] && State.y==State.A.[1]) // hit
                 Aships = Aships-1;
-        State.x = publicInput(x => (x>=0 && x<=10))
-        State.y = publicInput(x => (x>=0 && x<=10))
+        State.x = publicInput(x => (x>=0 && x<10))
+        State.y = publicInput(x => (x>=0 && x<10))
         },
 */
 
@@ -52,6 +52,7 @@ template Main() {
     component eq1[5];
     component eq2[5];
     component and1[5];
+    component mux1[5];
     for (var i = 0; i < 5; i++) {
         eq1[i] = IsEqual();
         eq1[i].in[0] <== shipPositions_prev[i][0];
@@ -66,10 +67,40 @@ template Main() {
         and1[i].b <== eq2[i].out;
 
         tmp1 += and1[i].out;
+
+        // update ship positions, if hit update to 10
+        mux1[i] =  Mux1();
+        mux1[i].c[0] <== shipPositions_prev[i][0];
+        mux1[i].c[1] <== 10;
+        mux1[i].s <== and1[i].out;
+        shipPositions[i][0] === mux1[i].out;
     }
 
-    Aships === Aships;
+    Aships === Aships_prev;
     Bships === (Bships_prev - tmp1);
+
+    // x and y should be in range
+    component geq1 = GreaterEqThan(4);
+    geq1.in[0] <== x;
+    geq1.in[1] <== 0;
+    component leq1 = LessThan(4);
+    leq1.in[0] <== x;
+    leq1.in[1] <== 10;
+    component and2 = AND();
+    and2.a <== geq1.out;
+    and2.b <== leq1.out;
+    and2.out === 1;
+
+    component geq2 = GreaterEqThan(4);
+    geq2.in[0] <== y;
+    geq2.in[1] <== 0;
+    component leq2 = LessThan(4);
+    leq2.in[0] <== y;
+    leq2.in[1] <== 10;
+    component and3 = AND();
+    and3.a <== geq2.out;
+    and3.b <== leq2.out;
+    and3.out === 1;
 
     // calculate hash
     component hasher1 = MiMCSponge(10, 220, 1);

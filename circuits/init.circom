@@ -2,6 +2,7 @@ pragma circom 2.0.0;
 
 include "../node_modules/circomlib/circuits/mimcsponge.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/circomlib/circuits/gates.circom";
 
 /*
    Aships:5,
@@ -38,7 +39,7 @@ template Main() {
    Bships === 5;
    x === 10;
    y === 10;
-   // shipPositions[i][0] and shipPositions[i][1] should be between 0 and 9
+   // input constrains, shipPositions[i][0] and shipPositions[i][1] should be between 0 and 9
    component gte0[5];
    component lt0[5];
    component gte1[5];
@@ -67,6 +68,30 @@ template Main() {
       lt1[i].in[0] <== shipPositions[i][1];
       lt1[i].in[1] <== 10;
       lt1[i].out === 1;
+   }
+
+   // no ships should overlap
+   component eq1[10];
+   component eq2[10];
+   component and1[10];
+   var c = 0;
+   for (var i = 0; i < 5; i++) {
+      for (var j = i+1; j < 5; j++) {
+         // shipPositions i and j should not overlap, or
+         // (shipPositions[i][0] == shipPositions[j][0]) && (shipPositions[i][1] == shipPositions[j][1]) == false
+         eq1[c] = IsEqual();
+         eq1[c].in[0] <== shipPositions[i][0];
+         eq1[c].in[1] <== shipPositions[j][0];
+         eq2[c] = IsEqual();
+         eq2[c].in[0] <== shipPositions[i][1];
+         eq2[c].in[1] <== shipPositions[j][1];
+         and1[c] = AND();
+         and1[c].a <== eq1[c].out;
+         and1[c].b <== eq2[c].out;
+         and1[c].out === 0;
+
+         c++;
+      }
    }
 
    // calculate hash of private states
