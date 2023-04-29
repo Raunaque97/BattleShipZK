@@ -8,24 +8,28 @@ A simple front-end is implemented using svelte to test the circuits and concepts
 
 ## compiling circuits
 
+###### 0. install circom and snarkjs
+
 ###### 1. perform powersOfTau to produce \*.ptau files need for verification ket generation
 
 https://docs.circom.io/getting-started/proving-circuits/#powers-of-tau
 
+##### generating {}.r1cs and .wasm files
+
 Running `circom {}.circom --r1cs --wasm --sym`
 produces `{}.rics` & `{}.wasm` files
 
-#### generating {}.zkey
+##### generating {}.zkey
 
 `snarkjs groth16 setup {}.r1cs pot12_final.ptau circuit.zkey`
 
-#### Extracting the verification key from `.zkey`
+##### Extracting the verification key from `.zkey`
 
 `snarkjs zkey export verificationkey circuit.zkey verification_key.json`
 
-### Or use compile.sh
+### Or simply use compile.sh
 
-`cd` into circuits and run `./compile.sh` it runs all the above necessary commands and conviniently places the .wasm, .zkey files in the respective target locations inside `/frontend` to be used by the dapp.
+`cd` into circuits and run `./compile.sh` it runs all the above necessary commands and conviniently places the .wasm, .zkey files in the respective target locations inside `/frontend` to be used by the dapp. Remember to place the `*.ptau` file in the circuits folder
 
 ## TODO
 
