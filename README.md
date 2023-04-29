@@ -30,5 +30,5 @@ produces `{}.rics` & `{}.wasm` files
 ## TODO
 
 - Implement SmartContracts to penalize abusers, time guarantees enforced on-chain.
-- Implement a "shady client" to easily test the obustness of the protocol
+- Implement a "shady client" to easily test the correctness of the protocol
 - Explore recursive proofs, a single proof of the entire game played correctly
