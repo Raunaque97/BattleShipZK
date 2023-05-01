@@ -65,7 +65,7 @@
     </defs>
   </svg>
   <!-- loop over ship positions add dragable divs -->
-  {#each shipPositions as [row, col]}
+  {#each shipPositions.filter((p) => p[0] != size || p[1] != size) as [row, col]}
     <div
       class="ship"
       style="width: {gridWidth}px; height: {gridWidth}px; opacity: {frozen
